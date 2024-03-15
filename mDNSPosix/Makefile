@@ -59,7 +59,7 @@ FLEX = flex
 ST = strip
 LD = ld
 SOOPTS = -shared
-CP = cp
+CP = install -D
 RM = rm
 LN = ln -s -f
 CFLAGS_COMMON = -I$(COREDIR) -I$(SHAREDDIR) -I$(UTILDIR) -I$(DSODIR) -I$(SERVICEREGISTRATIONDIR) -I$(OBJDIR) -fwrapv -W -Wall -DPOSIX_BUILD -DPID_FILE=\"/var/run/mdnsd.pid\" -DMDNS_UDS_SERVERPATH=\"/var/run/mdnsd\"
@@ -185,7 +185,7 @@ NSSLIBNAME  := libnss_mdns
 NSSVERSION  := 0.2
 NSSLIBFILE  := $(NSSLIBNAME)-$(NSSVERSION).so
 NSSLINKNAME := $(NSSLIBNAME).so.2
-NSSINSTPATH := /lib
+NSSINSTPATH := $(INSTBASE)/
 
 # If not otherwise defined, we install into /usr/lib and /usr/include
 # and our startup script is called mdns (e.g. /etc/init.d/mdns)
@@ -203,9 +203,9 @@ endif
 
 # If directory /usr/share/man exists, then we install man pages into that, else /usr/man
 ifeq ($(wildcard /usr/share/man), /usr/share/man)
-MANPATH := /usr/share/man
+MANPATH := $(INSTBASE)/usr/share/man
 else
-MANPATH := /usr/man
+MANPATH := $(INSTBASE)/usr/man
 endif
 
 # If directories /etc/init.d/rc*.d exist, then we install into that (Suse)
@@ -220,8 +220,7 @@ RUNLEVELSCRIPTSDIR = /etc/rc.d
 else
 # Else if directory /etc/init.d/ exists, then we install into that (new Linux)
 ifeq ($(wildcard /etc/init.d/), /etc/init.d/)
-STARTUPSCRIPTDIR = /etc/init.d
-RUNLEVELSCRIPTSDIR = /etc
+STARTUPSCRIPTDIR = $(INSTBASE)/etc/init.d
 else
 # Else install into /etc/rc.d/ (*BSD)
 STARTUPSCRIPTDIR = $(INSTBASE)/etc/rc.d
@@ -241,6 +240,7 @@ install: setup InstalledStartup InstalledDaemon InstalledLib InstalledManPages I
 setup:
 	@if test ! -d $(OBJDIR)   ; then mkdir -p $(OBJDIR)   ; fi
 	@if test ! -d $(BUILDDIR) ; then mkdir -p $(BUILDDIR) ; fi
+	@if test ! -d $(STARTUPSCRIPTDIR) ; then mkdir -p $(STARTUPSCRIPTDIR) ; fi
 
 # clean removes targets and objects
 clean:
@@ -262,10 +262,10 @@ DAEMONOBJS = $(OBJDIR)/PosixDaemon.c.o $(OBJDIR)/mDNSPosix.c.o $(OBJDIR)/mDNSUNP
 DNSEXTDOBJ = $(OBJDIR)/mDNSPosix.c.o $(OBJDIR)/mDNSUNP.c.o $(OBJDIR)/mDNSDebug.c.o $(OBJDIR)/GenLinkedList.c.o $(OBJDIR)/DNSDigest.c.o \
              $(OBJDIR)/DNSCommon.c.o $(OBJDIR)/PlatformCommon.c.o $(OBJDIR)/dnsextd_parser.y.o $(OBJDIR)/dnsextd_lexer.l.o
 
-Daemon: setup $(BUILDDIR)/mdnsd
+Daemon: setup $(BUILDDIR)/mdnsd-vizio
 	@echo "Responder daemon done"
 
-$(BUILDDIR)/mdnsd: $(DAEMONOBJS)
+$(BUILDDIR)/mdnsd-vizio: $(DAEMONOBJS)
 	$(CC) -o $@ $+ $(LINKOPTS)
 	$(STRIP) $@
 
@@ -279,10 +279,10 @@ $(BUILDDIR)/libdns_sd.$(LDSUFFIX): $(CLIENTLIBOBJS)
 	$(LD) $(SOOPTS) $(LINKOPTS) -o $@ $+
 	$(STRIP) $@
 
-Clients: setup libdns_sd ../Clients/build/dns-sd
+Clients: setup ../Clients/build/dns-sd-vizio
 	@echo "Clients done"
 
-../Clients/build/dns-sd: ../Clients/dns-sd.c
+../Clients/build/dns-sd-vizio: libdns_sd ../Clients/dns-sd.c
 	$(MAKE) -C ../Clients DEBUG=$(DEBUG) SUPMAKE_CFLAGS="$(MDNSCFLAGS)"
 
 # nss_mdns target builds the Name Service Switch module
@@ -296,7 +296,7 @@ $(BUILDDIR)/$(NSSLIBFILE): $(CLIENTLIBOBJS) $(OBJDIR)/nss_mdns.c.so.o
 #############################################################################
 
 # The Install targets place built stuff in their proper places
-InstalledDaemon: $(INSTBASE)/sbin/mdnsd
+InstalledDaemon: $(INSTBASE)/sbin/mdnsd-vizio
 	@echo $+ " installed"
 
 InstalledLib: $(INSTBASE)/lib/libdns_sd.$(LDSUFFIX).$(LIBVERS) $(INSTBASE)/include/dns_sd.h
@@ -308,14 +308,14 @@ InstalledStartup: $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME)
 InstalledManPages: $(MANPATH)/man8/mdnsd.8
 	@echo $+ " installed"
 
-InstalledClients: $(INSTBASE)/bin/dns-sd
+InstalledClients: $(INSTBASE)/bin/dns-sd-vizio
 	@echo $+ " installed"
 
-InstalledNSS: $(NSSINSTPATH)/$(NSSLINKNAME) /etc/nss_mdns.conf $(MANPATH)/man5/nss_mdns.conf.5 $(MANPATH)/man8/libnss_mdns.8
+InstalledNSS: $(NSSINSTPATH)/lib/$(NSSLINKNAME) $(NSSINSTPATH)/etc/nss_mdns.conf $(MANPATH)/man5/nss_mdns.conf.5 $(MANPATH)/man8/libnss_mdns.8
 	@echo $+ " installed"
 
 # Note: If daemon already installed, we make sure it's stopped before overwriting it
-$(INSTBASE)/sbin/mdnsd: $(BUILDDIR)/mdnsd $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME)
+$(INSTBASE)/sbin/mdnsd-vizio: $(BUILDDIR)/mdnsd-vizio $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME)
 	if test -x $@; then $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME) stop; fi
 	$(CP) $< $@
 	$(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME) start
@@ -348,35 +348,30 @@ endif
 endif
 
 $(MANPATH)/man5/%.5: %.5
-	cp $< $@
+	$(CP) $< $@
 	chmod 444 $@
 
 $(MANPATH)/man8/%.8: %.8
-	cp $< $@
+	$(CP) $< $@
 	chmod 444 $@
 
 $(MANPATH)/man8/mdnsd.8: $(SHAREDDIR)/mDNSResponder.8
-	cp $< $@
+	$(CP) $< $@
 	chmod 444 $@
 
-$(INSTBASE)/bin/dns-sd: ../Clients/build/dns-sd
+$(INSTBASE)/bin/dns-sd-vizio: ../Clients/build/dns-sd-vizio
 	$(CP) $< $@
 
-$(NSSINSTPATH)/$(NSSLINKNAME): $(NSSINSTPATH)/$(NSSLIBFILE)
+$(NSSINSTPATH)/lib/$(NSSLINKNAME): $(NSSINSTPATH)/lib/$(NSSLIBFILE)
 	$(LN) $< $@
-	ldconfig
 
-$(NSSINSTPATH)/$(NSSLIBFILE): $(BUILDDIR)/$(NSSLIBFILE)
+$(NSSINSTPATH)/lib/$(NSSLIBFILE): $(BUILDDIR)/$(NSSLIBFILE)
 	$(CP) $< $@
 	chmod 444 $@
 
-/etc/nss_mdns.conf: nss_mdns.conf
+$(NSSINSTPATH)/etc/nss_mdns.conf: nss_mdns.conf
 	$(CP) $< $@
 	chmod 444 $@
-# Check the nsswitch.conf file.
-# If 'mdns' does not already appear on the "hosts:" line, then add it right before 'dns'
-	cp -f /etc/nsswitch.conf /etc/nsswitch.conf.pre-mdns
-	sed -e '/\bmdns\b/!s/^\(hosts:.*\)dns\(.*\)/\1mdns dns\2/' /etc/nsswitch.conf.pre-mdns > /etc/nsswitch.conf
 
 #############################################################################
 

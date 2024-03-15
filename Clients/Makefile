@@ -38,10 +38,10 @@ BUILDDIR = build/prod
 endif
 
 ifneq "$(wildcard /usr/lib/libSystem.dylib)" ""
-TARGETS = build/dns-sd build/dns-sd64
+TARGETS = build/dns-sd-vizio build/dns-sd64
 LIBS =
 else
-TARGETS = build/dns-sd
+TARGETS = build/dns-sd-vizio
 LIBS = -L../mDNSPosix/$(BUILDDIR)/ -ldns_sd
 endif
 
@@ -53,7 +53,7 @@ clean:
 build:
 	mkdir build
 
-build/dns-sd: build dns-sd.c ClientCommon.c
+build/dns-sd-vizio: build dns-sd.c ClientCommon.c
 	$(CC) $(SUPMAKE_CFLAGS) $(filter %.c %.o, $+) $(LIBS) -I../mDNSShared -Wall -o $@
 
 build/dns-sd64: build dns-sd.c ClientCommon.c
