@@ -232,6 +232,8 @@ MDNSCFLAGS = $(CFLAGS) $(CFLAGS_COMMON) $(CFLAGS_OS) $(CFLAGS_DEBUGGING)
 
 #############################################################################
 
+.NOTPARALLEL:
+
 all: setup Daemon libdns_sd Clients SAClient SAResponder SAProxyResponder NetMonitor $(OPTIONALTARG)
 
 install: setup InstalledStartup InstalledDaemon InstalledLib InstalledManPages InstalledClients $(OPTINSTALL)
