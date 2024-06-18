@@ -230,9 +230,9 @@ endif
 
 MDNSCFLAGS = $(CFLAGS) $(CFLAGS_COMMON) $(CFLAGS_OS) $(CFLAGS_DEBUGGING)
 
-#############################################################################
+$(shell mkdir -p $(OBJDIR) $(BUILDDIR) $(STARTUPSCRIPTDIR))
 
-.NOTPARALLEL:
+#############################################################################
 
 all: setup Daemon libdns_sd Clients SAClient SAResponder SAProxyResponder NetMonitor $(OPTIONALTARG)
 
